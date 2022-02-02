@@ -388,8 +388,8 @@ void handleNewMessages(int numNewMessages) {
 // the_camera_loop()
 
 void the_camera_loop (void* pvParameter) {
-
   for (int i = 0; i < 3; ++i) {
+    esp_camera_fb_return(vid_fb);
     vid_fb = esp_camera_fb_get();
     if (!vid_fb) {
       Serial.println("Camera capture failed");
@@ -398,7 +398,6 @@ void the_camera_loop (void* pvParameter) {
       }
       return;
     }
-    esp_camera_fb_return(vid_fb);
   }
   picture_ready = true;
 
@@ -512,7 +511,7 @@ int loopcount = 0;
 
 void loop() {
   loopcount++;
-  delay(50);
+  delay(10);
 
   //client.setHandshakeTimeout(120000); // workaround for esp32-arduino 2.02 bug https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/270#issuecomment-1003795884
 
@@ -567,7 +566,7 @@ void send_the_picture() {
 
   String messageText = "Telegram Request";
   if (active_interupt) {
-    String messageText = "Cot p'et!";
+    messageText = "Cot p'et!";
   }
 
   for (int i = 0; i < chat_ids.size(); ++i) {

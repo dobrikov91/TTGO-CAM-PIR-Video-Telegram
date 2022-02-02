@@ -2,15 +2,15 @@
 
 #include "esp_camera.h"
 
-static const char vernum[] = "pir-cam 8.9";
-static String devstr =  "deskpir";
-static int max_frames = 150;
+static const char vernum[] = "pir-cam 9.0";
+static String devstr =  "catcam";
+static int max_frames = 200;
 static framesize_t configframesize = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 static int frame_interval = 500; // 0 = record at full speed, 100 = 100 ms delay between frames
-static int quality = 10;
+static int quality = 20;
 static int qualityconfig = 5;
-static float speed_up_factor = 2.5; // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
-static int framesize = configframesize; //FRAMESIZE_SVGA;
+static float speed_up_factor = 2; // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
+static int framesize = configframesize;
 
 static int avi_buf_size = 3000 * 1024; // = 3000 kb = 60 * 50 * 1024;
 static int idx_buf_size = 200 * 10 + 20;
