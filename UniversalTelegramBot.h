@@ -139,7 +139,7 @@ public:
   int maxMessageLength = 1500;
   int jzdelay = 0;  // delay between multipart blocks
   //int jzblocksize = 32 * 512;
-#define jzblocksize  32 * 512
+#define jzblocksize 32 * 512
   byte buffer[jzblocksize];
 
 private:
