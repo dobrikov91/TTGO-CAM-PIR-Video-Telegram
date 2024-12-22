@@ -30,9 +30,7 @@ bool initWifi() {
   }
 
   wifi_ps_type_t the_type;
-
   //esp_err_t get_ps = esp_wifi_get_ps(&the_type);
-
   esp_err_t set_ps = esp_wifi_set_ps(WIFI_PS_NONE);
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, brown_reg_temp);
@@ -84,7 +82,7 @@ bool setupCamera() {
   if (psramFound()) {
     config.frame_size = configframesize;
     config.jpeg_quality = qualityconfig;
-    config.fb_count = 3;
+    config.fb_count = 1;
   } else {
     config.frame_size = FRAMESIZE_SVGA;
     config.jpeg_quality = 12;
@@ -116,8 +114,6 @@ bool setupCamera() {
 
   sensor_t * s = esp_camera_sensor_get();
 
-  //  drop down frame size for higher initial frame rate
-  //s->set_framesize(s, (framesize_t)framesize);
   s->set_quality(s, quality);
   s->set_brightness(s, 0);
   delay(200);

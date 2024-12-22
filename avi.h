@@ -9,4 +9,4 @@ size_t getPsramAviLen();
 void start_avi();
 void another_save_avi(camera_fb_t * fb);
 void end_avi();
-void record_movie();
+bool record_movie();

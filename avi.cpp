@@ -101,7 +101,6 @@ uint16_t frame_cnt = 0;
 unsigned long movi_size = 0;
 
 camera_fb_t * fb_curr = NULL;
-camera_fb_t * fb_next = NULL;
 
 //
 // Writes an uint32_t in Big Endian at current file position
@@ -154,9 +153,6 @@ size_t getPsramAviLen() {
 void start_avi() {
 
   Serial.println("Starting an avi ");
-
-  //memset(psram_avi_buf, 0, avi_buf_size);  // save some time
-  //memset(psram_idx_buf, 0, idx_buf_size);
 
   psram_avi_ptr = 0;
   psram_idx_ptr = 0;
@@ -259,7 +255,7 @@ void another_save_avi(camera_fb_t * fb) {
 void end_avi() {
   Serial.println("End of avi - closing the files");
 
-  if (frame_cnt <  5 ) {
+  if (frame_cnt <  5) {
     Serial.println("Recording screwed up, less than 5 frames, forget index\n");
   } else {
 
@@ -318,7 +314,7 @@ void end_avi() {
   Serial.println("---");
 }
 
-void record_movie() {
+bool record_movie() {
     frame_cnt = 0;
 
     ///////////////////////////// start a movie
@@ -326,59 +322,40 @@ void record_movie() {
     Serial.printf("\nStart the avi ... at %d\n", avi_start_time);
     Serial.printf("Framesize %d, quality %d, length %d seconds\n\n", framesize, quality,  max_frames * frame_interval / 1000);
 
-    fb_next = esp_camera_fb_get();
-    if (!fb_next) {
-      Serial.println("Camera Capture Failed");
-      return;
-    }
     last_frame_time = millis();
     start_avi();
 
     ///////////////////////////// all the frames of movie
+    for (int j = 0; j < max_frames ; j++) {
+      fb_curr = esp_camera_fb_get();
+      if (!fb_curr) {
+        Serial.println("Camera Capture Failed");
+        return false;
+      }
 
-    for (int j = 0; j < max_frames - 1 ; j++) { // max_frames
+      another_save_avi(fb_curr);
+      esp_camera_fb_return(fb_curr);
+
       current_frame_time = millis();
+      frame_cnt++;
 
       if (current_frame_time - last_frame_time < frame_interval) {
-        if (frame_cnt < 5 || frame_cnt > (max_frames - 5) ) {
-          Serial.printf("frame %d, delay %d\n", frame_cnt, (int) frame_interval - (current_frame_time - last_frame_time));
-        }
         long int delayTime = max((long int)0, frame_interval - (current_frame_time - last_frame_time));
+        Serial.printf("frame %d, delay %d\n", frame_cnt, delayTime);
         delay(delayTime); // delay for timelapse
       }
 
       last_frame_time = millis();
-      frame_cnt++;
-
-      //if (frame_cnt !=  1)
-      esp_camera_fb_return(fb_curr);
-      fb_curr = fb_next;           // we will write a frame, and get the camera preparing a new one
-
-      another_save_avi(fb_curr );
-      fb_next = esp_camera_fb_get();
-      if (!fb_next) {
-        Serial.println("Camera Capture Failed");
-        break;
-      }
-
-      if (movi_size > avi_buf_size * .95) {
+      if (movi_size > avi_buf_size * .99) {
         break;
       }
     }
 
     ///////////////////////////// stop a movie
     Serial.println("End the Avi");
-
-    esp_camera_fb_return(fb_curr);
-    frame_cnt++;
-    fb_curr = fb_next;
-    fb_next = NULL;
-    another_save_avi(fb_curr );
-    esp_camera_fb_return(fb_curr);
-    fb_curr = NULL;
-    end_avi();                                // end the movie
+    end_avi();
     avi_end_time = millis();
     float fps = 1.0 * frame_cnt / ((avi_end_time - avi_start_time) / 1000) ;
     Serial.printf("End the avi at %d.  It was %d frames, %d ms at %.2f fps...\n", millis(), frame_cnt, avi_end_time - avi_start_time, fps);
-    frame_cnt = 0;             // start recording again on the next loop
+    return true;
 }

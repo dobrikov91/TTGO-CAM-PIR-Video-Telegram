@@ -1,95 +1,3 @@
-/*******************************************************************
-
- ESP32-CAM-Video-Telegram
-
-  This program records an mjpeg avi video in the psram of a ESP32-CAM, and sends a jpeg and a avi video to Telegram.
-
-  https://github.com/jameszah/ESP32-CAM-Video-Telegram is licensed under the
-    GNU General Public License v3.0
-
-  by James Zahary  June 1, 2020
-  jamzah.plc@gmail.com
-
-
-  The is Arduino code, with standard setup for ESP32-CAM
-    - Board ESP32 Wrover Module
-    - Partition Scheme Huge APP (3MB No OTA)
-    - or with AI Thinker ESP32-CAM
-  Compiled with Arduino 1.8.13 and arduino-esp32 1.0.6 (latest release version) on Jun 10, 2021
-
-  Jan 18, 2022 ver 8.9
-  - updates from Arduino 1.8.19
-    - return from void problem re-runs the function if you dont do a return ???
-      https://stackoverflow.com/questions/22742581/warning-control-reaches-end-of-non-void-function-wreturn-type
-  - updates for esp32-arduino 2.0.2
-    - bug with 2.0.2 handshake timeout - added timeout resets in this file as a workaround
-      https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/270#issuecomment-1003795884
-   - updates for esp32-arduino 2.0.2
-     - esp-camera seems to have changed to fill all free fb buffers in sequence, so must empty them to get a snapshot
-
-  Based on these two:
-
-  https://github.com/jameszah/ESP32-CAM-Video-Recorder-junior
-  https://github.com/jameszah/ESP32-CAM-Video-Recorder
-
-  and using a modified old version of:
-  https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot
-
-
-
-~~~~~~~~~~~~
-
-Using library WiFi at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\WiFi
-Using library WiFiClientSecure at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\WiFiClientSecure
-Using library ArduinoJson at version 6.18.5 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\sketchbook\libraries\ArduinoJson
-Using library ESPmDNS at version 2.0.0 in folder: C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2\libraries\ESPmDNS
-"C:\\ArduinoPortable\\arduino-1.8.19\\portable\\packages\\esp32\\tools\\xtensa-esp32-elf-gcc\\gcc8_4_0-esp-2021r2/bin/xtensa-esp32-elf-size" -A "C:\\Users\\James\\AppData\\Local\\Temp\\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.elf"
-Sketch uses 956193 bytes (30%) of program storage space. Maximum is 3145728 bytes.
-Global variables use 63080 bytes (19%) of dynamic memory, leaving 264600 bytes for local variables. Maximum is 327680 bytes.
-C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\tools\esptool_py\3.1.0/esptool.exe --chip esp32 --port COM7 --baud 460800 --before default_reset --after hard_reset write_flash -z --flash_mode dio --flash_freq 80m --flash_size 4MB 0xe000 C:\ArduinoPortable\arduino-1.8.19\portable\packages\esp32\hardware\esp32\2.0.2/tools/partitions/boot_app0.bin 0x1000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.bootloader.bin 0x10000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.bin 0x8000 C:\Users\James\AppData\Local\Temp\arduino_build_57156/ESP32-CAM-Video-Telegram_8.9.ino.partitions.bin
-
-
-*******************************************************************/
-
-
-/*******************************************************************
-  -  original opening from Brian Lough telegram bot demo
-
-   A Telegram bot for taking a photo with an ESP32Cam
-
-   Parts used:
-   ESP32-CAM module* - http://s.click.aliexpress.com/e/bnXR1eYs
-
-    = Affiliate Links
-
-   Note:
-   - Make sure that you have either selected ESP32 Wrover Module,
-           or another board which has PSRAM enabled
-   - Choose "Huge App" partion scheme
-
-   Some of the camera code comes from Rui Santos:
-   https://randomnerdtutorials.com/esp32-cam-take-photo-save-microsd-card/
-
-   Written by Brian Lough
-    YouTube: https://www.youtube.com/brianlough
-    Tindie: https://www.tindie.com/stores/brianlough/
-    Twitter: https://twitter.com/witnessmenow
-
-    Aug 7, 2020 - jz
-    Mods to library and example to demonstrate
-     - bugfix with missing println statement
-     - method to send big and small jpegs
-     - sending a caption with a pictire
-
-    Mar 26, 2021 - jz
-    Mods for esp32 version 1.05
-    See line 250 of UniversalTelegramBot.cpp in the current github software
-    https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/235#issue-842397567
-    See https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/blob/65e6f826cbab242366d69f00cebc25cdd1e81305/src/UniversalTelegramBot.cpp#L250
-
-
-*******************************************************************/
-
 // ----------------------------
 // Standard Libraries - Already Installed if you have ESP32 set up
 // ----------------------------
@@ -129,18 +37,15 @@ UniversalTelegramBot bot(BOTtoken, client);
 int Bot_mtbs = 5000; //mean time between scan messages
 long Bot_lasttime;   //last time messages' scan has been done
 
-camera_fb_t * fb = NULL;
 camera_fb_t * vid_fb = NULL;
-
 TaskHandle_t the_camera_loop_task;
 void the_camera_loop(void* pvParameter) ;
 static void IRAM_ATTR PIR_ISR(void* arg) ;
 
 bool video_ready = false;
-bool picture_ready = false;
 bool active_interupt = false;
-bool pir_enabled = false;
-bool avi_enabled = false;
+bool pir_enabled = true;
+bool avi_enabled = true;
 
 time_t now;
 struct tm timeinfo;
@@ -176,12 +81,8 @@ uint8_t avi_next() {
 
 bool dataAvailable = false;
 
-///////////////////////////////
 
 void handleNewMessages(int numNewMessages) {
-  //Serial.println("handleNewMessages");
-  //Serial.println(String(numNewMessages));
-
   for (int i = 0; i < numNewMessages; i++) {
     String chat_id = String(bot.messages[i].chat_id);
     String text = bot.messages[i].text;
@@ -265,18 +166,18 @@ void handleNewMessages(int numNewMessages) {
     }
     */
 
-    for (int j = 0; j < 4; j++) {
-    camera_fb_t * newfb = esp_camera_fb_get();
-    if (!newfb) {
-      Serial.println("Camera Capture Failed");
-    } else {
-      //Serial.print("Pic, len="); Serial.print(newfb->len);
-      //Serial.printf(", new fb %X\n", (long)newfb->buf);
-      esp_camera_fb_return(newfb);
-      delay(10);
-    }
-  }
-    if ( text == "/photo" || text == "/caption" ) {
+    /*for (int j = 0; j < 4; j++) {
+      camera_fb_t * newfb = esp_camera_fb_get();
+      if (!newfb) {
+        Serial.println("Camera Capture Failed");
+      } else {
+        //Serial.print("Pic, len="); Serial.print(newfb->len);
+        //Serial.printf(", new fb %X\n", (long)newfb->buf);
+        esp_camera_fb_return(newfb);
+        delay(10);
+      }
+    }*/
+    /*if ( text == "/photo" || text == "/caption" ) {
 
       fb = NULL;
 
@@ -345,14 +246,9 @@ void handleNewMessages(int numNewMessages) {
                             nullptr, nullptr);
 
       esp_camera_fb_return(fb);
-    }
-
+    }*/
 
     if (text == "/clip") {
-
-      // record the video
-      bot.longPoll =  0;
-
       xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 1);
       //xTaskCreatePinnedToCore( the_camera_loop, "the_camera_loop", 10000, NULL, 1, &the_camera_loop_task, 0);  //v8.5
 
@@ -364,8 +260,8 @@ void handleNewMessages(int numNewMessages) {
 
     if (text == "/start") {
       String welcome = "ESP32Cam Telegram bot.\n\n";
-      welcome += "/photo: take a photo\n";
-      welcome += "/caption: photo with caption\n";
+      //welcome += "/photo: take a photo\n";
+      //welcome += "/caption: photo with caption\n";
       welcome += "/clip: short video clip\n";
       welcome += "\n Configure the clip\n";
       welcome += "/enable: enable pir\n";
@@ -383,13 +279,11 @@ void handleNewMessages(int numNewMessages) {
   }
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-// the_camera_loop()
-
 void the_camera_loop (void* pvParameter) {
-  for (int i = 0; i < 3; ++i) {
+    // skip first frame
+    vid_fb = esp_camera_fb_get();
     esp_camera_fb_return(vid_fb);
+
     vid_fb = esp_camera_fb_get();
     if (!vid_fb) {
       Serial.println("Camera capture failed");
@@ -398,27 +292,25 @@ void the_camera_loop (void* pvParameter) {
       }
       return;
     }
-  }
-  picture_ready = true;
+    send_the_picture();
+    esp_camera_fb_return(vid_fb);
 
   if (avi_enabled) {
     time(&now);
     localtime_r(&now, &timeinfo);
     strftime(strftime_buf, sizeof(strftime_buf), "CatCam %F %H.%M.%S.avi", &timeinfo);
 
-    record_movie();
+    if (!record_movie()) {
+      for (int i = 0; i < chat_ids.size(); ++i) {
+        bot.sendMessage(chat_ids[i], "Video capture failed", "");
+      }
+      return;
+    }
     video_ready = true;
   }
   Serial.println("Deleting the camera task");
-  delay(100);
   vTaskDelete(the_camera_loop_task);
 }
-
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-// setup some interupts during reboot
-//
-//  int read13 = digitalRead(13); -- pir for video
 
 int PIRpin = 19;
 
@@ -437,10 +329,6 @@ static void setupinterrupts() {
   gpio_set_intr_type((gpio_num_t)PIRpin, GPIO_INTR_POSEDGE);
 }
 
-//~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-//
-//  PIR_ISR - interupt handler for PIR  - starts or extends a video
-//
 static void IRAM_ATTR PIR_ISR(void* arg) {
   int PIRstatus = digitalRead(PIRpin) + digitalRead(PIRpin) + digitalRead(PIRpin) ;
   if (PIRstatus == 3) {
@@ -465,8 +353,6 @@ void setup() {
   Serial.printf("TTGO-CAM PIR Video Telegram %s\n", vernum);
   Serial.println("---------------------------------");
 
-  //pinMode(12, INPUT_PULLUP);        // pull this down to stop recording
-
   allocatePsram();
   if (!setupCamera()) {
     Serial.println("Camera Setup Failed!");
@@ -475,43 +361,31 @@ void setup() {
     }
   }
 
-
-  for (int j = 0; j < 3; j++) {
-    camera_fb_t * fb = esp_camera_fb_get();
-    if (!fb) {
-      Serial.println("Camera Capture Failed");
-    } else {
-      Serial.print("Pic, len="); Serial.print(fb->len);
-      Serial.printf(", new fb %X\n", (long)fb->buf);
-      esp_camera_fb_return(fb);
-      delay(50);
-    }
+  camera_fb_t * fb = esp_camera_fb_get();
+  if (!fb) {
+    Serial.println("Camera Capture Failed");
+  } else {
+    Serial.print("Pic, len="); Serial.print(fb->len);
+    Serial.printf(", new fb %X\n", (long)fb->buf);
+    esp_camera_fb_return(fb);
   }
 
   bool wifi_status = initWifi();
-
-  // Make the bot wait for a new message for up to 60seconds
   bot.longPoll = 60;
-  //bot.longPoll = 5;
-
   client.setInsecure();
-
   setupinterrupts();
 
   String stat = "Reboot\nDevice: " + devstr + "\nVer: " + String(vernum) + "\nRssi: " + String(WiFi.RSSI()) + "\nip: " +  WiFi.localIP().toString() + "\n/start";
   for (int i = 0; i < chat_ids.size(); ++i) {
     bot.sendMessage(chat_ids[i], stat, "");
   }
-
-  pir_enabled = true;
-  avi_enabled = true;
 }
 
 int loopcount = 0;
 
 void loop() {
   loopcount++;
-  delay(10);
+  delay(1);
 
   //client.setHandshakeTimeout(120000); // workaround for esp32-arduino 2.02 bug https://github.com/witnessmenow/Universal-Arduino-Telegram-Bot/issues/270#issuecomment-1003795884
 
@@ -524,17 +398,12 @@ void loop() {
     ESP.restart();
   }
 
-  if (picture_ready) {
-    picture_ready = false;
-    send_the_picture();
-  }
-
   if (video_ready) {
     video_ready = false;
     send_the_video();
   }
 
-  if (botReacts && millis() > Bot_lasttime + Bot_mtbs) {
+  /*if (botReacts && millis() > Bot_lasttime + Bot_mtbs) {
 
     if (WiFi.status() != WL_CONNECTED) {
       Serial.println("***** WiFi reconnect *****");
@@ -554,7 +423,7 @@ void loop() {
       numNewMessages = bot.getUpdates(bot.last_message_received + 1);
     }
     Bot_lasttime = millis();
-  }
+  }*/
 }
 
 
@@ -576,8 +445,6 @@ void send_the_picture() {
                   isMoreDataAvailable, getNextByte, nullptr, nullptr);
   }
 
-  esp_camera_fb_return(vid_fb);
-  bot.longPoll =  0;
   if (!avi_enabled) active_interupt = false;
 }
 
@@ -596,6 +463,5 @@ void send_the_video() {
     Serial.println("\ndone");
   }
 
-  bot.longPoll = 5;
   active_interupt = false;
 }

@@ -2,18 +2,28 @@
 
 #include "esp_camera.h"
 
+// FRAMESIZE_QVGA,     // 320x240
+// FRAMESIZE_CIF,      // 400x296
+// FRAMESIZE_HVGA,     // 480x320
+// FRAMESIZE_VGA,      // 640x480   8
+// FRAMESIZE_SVGA,     // 800x600   9
+// FRAMESIZE_XGA,      // 1024x768  10
+// FRAMESIZE_HD,       // 1280x720  11
+// FRAMESIZE_SXGA,     // 1280x1024 12
+// FRAMESIZE_UXGA,     // 1600x1200 13
+
 static const char vernum[] = "pir-cam 9.0";
 static String devstr =  "catcam";
-static int max_frames = 200;
-static framesize_t configframesize = FRAMESIZE_SVGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
+static int max_frames = 250;
+static framesize_t configframesize = FRAMESIZE_XGA; // FRAMESIZE_ + QVGA|CIF|VGA|SVGA|XGA|SXGA|UXGA
 static int frame_interval = 500; // 0 = record at full speed, 100 = 100 ms delay between frames
-static int quality = 20;
+static int quality = 30;
 static int qualityconfig = 5;
 static float speed_up_factor = 2; // 1 = play at realtime, 0.5 = slow motion, 10 = speedup 10x
 static int framesize = configframesize;
 
-static int avi_buf_size = 3000 * 1024; // = 3000 kb = 60 * 50 * 1024;
-static int idx_buf_size = 200 * 10 + 20;
+static int avi_buf_size = 3000 * 1024; // = 3000 kb = 60 * 50 * 1024; (3072000)
+static int idx_buf_size = 300 * 10 + 20;
 
 static bool botReacts = false;
 
